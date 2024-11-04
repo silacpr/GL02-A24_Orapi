@@ -5,4 +5,4 @@ let Radio = {
   },
 };
 
-export default Radio;
+module.exports = Radio;

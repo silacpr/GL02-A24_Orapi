@@ -5,4 +5,4 @@ let Command = {
     }
 }
 
-export default Command
+module.exports = Command

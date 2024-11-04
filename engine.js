@@ -5,4 +5,4 @@ let Engine = {
   },
 };
 
-export default Engine;
+module.exports = Engine;
