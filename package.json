@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@caporal/core": "^2.0.7"
+  },
+  "devDependencies": {
+    "prettier": "3.4.1"
+  }
+}
