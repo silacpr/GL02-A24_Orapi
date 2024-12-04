@@ -1,4 +1,9 @@
+# Node dependencies
 node_modules/
 
+# IDE specific directories
 .vscode/
 .idea/
+
+# Default generated gift files.
+output.gift

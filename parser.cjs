@@ -5,7 +5,27 @@ class GiftParser {
     this.inputFiles = inputFiles;
   }
 
-  findQuestionById(id) {
+  generateGift(questionIds) {
+    let giftOutput = "";
+
+    // Get each question using the find by id method. Pass in true as a second
+    // parameter to get rawOutput instead of parsed (JSON object) output.
+    questionIds.forEach((questionId) => {
+      const rawQuestion = this.findQuestionById(questionId, true)[0];
+
+      if (!rawQuestion) {
+        throw questionId;
+      }
+
+      // Append the rawQuestion to the outputString, with 3 new line characters
+      // to help readability. (any number of new lines can be between questions)
+      giftOutput += rawQuestion.trim() + '\n\n\n';
+    });
+
+    return giftOutput;
+  }
+
+  findQuestionById(id, raw = false) {
     const outputQuestions = [];
 
     // Loop through all the filePaths that were given as input.
@@ -18,13 +38,15 @@ class GiftParser {
       // supposed to be unique.
       const withoutComments = this._removeComments(file);
 
-      const regex = new RegExp(`::${id}::(.*?)(?=(?:::)|$)`, "s");
+      // Escape any potential special characters that could mess up the regex match.
+      const escapedId = this._escapeSpecialRegexChars(id);
+      const regex = new RegExp(`::${escapedId}::(.*?)(?=(?:::)|$)`, "s");
 
       const result = regex.exec(withoutComments);
 
       if (!result) return;
 
-      outputQuestions.push(this._parseQuestion(result[0]));
+      outputQuestions.push(raw ? result[0] : this._parseQuestion(result[0]));
     });
 
     return outputQuestions;
@@ -43,7 +65,9 @@ class GiftParser {
 
       // For each question, look for the query string. If it is found, parse and append
       // the question to the output.
-      const regex = new RegExp(`.*\\b${query}\\b.*`, "is");
+      // Escape any potential special characters that could mess up the regex match.
+      const escapedQuery = this._escapeSpecialRegexChars(query);
+      const regex = new RegExp(`.*\\b${escapedQuery}\\b.*`, "is");
       rawQuestions.forEach((rawQuestion) => {
         const result = regex.exec(rawQuestion);
 
@@ -82,6 +106,10 @@ class GiftParser {
 
     const result = regex.exec(rawQuestion);
     return { title: result[1].trim(), body: result[2].trim() };
+  }
+
+  _escapeSpecialRegexChars(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }
 
