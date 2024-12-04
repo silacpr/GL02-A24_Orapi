@@ -1,4 +1,8 @@
 const { program } = require("@caporal/core");
+const fs = require("fs");
+require("colors");
+
+const GiftParser = require("./parser.cjs");
 
 program
   .version("v0.0")
@@ -17,12 +21,55 @@ program
     "find",
     "Find a question from the database. Either the id for the question OR a text query must be provided.\n",
   )
-  .argument("[id]", "The ID associated with the question")
-  .argument("[query]", "A query string to search for in the question database")
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: Find a question from the database. Either the id for the question OR a text query must be specified.",
+  .option("--id <id>", "The ID associated with the question. A question ID corresponds to the full question title enclosed by '::' characters.")
+  .option(
+    "--query <query>",
+    "A query string to search for in the question database",
+  )
+  .action(({ options }) => {
+    const DATA_DIR_BASE_PATH = `${__dirname}/data`;
+
+    // Check that the user provided a valid option
+    if (!options.id && !options.query) {
+      console.log("Error: You must provide either an id or a query.");
+      return;
+    }
+
+    // Check that the user did not provide both the id and and a query.
+    if (options.id && options.query) {
+      console.log(
+        "Error: You should provide either an id or a query but not both.",
+      );
+      return;
+    }
+
+    // Read into the data directory and get the list of filepaths to load into the
+    // program.
+    const files = fs.readdirSync(DATA_DIR_BASE_PATH);
+    files.forEach((fileName, index, fileNameArray) => {
+      fileNameArray[index] = `${DATA_DIR_BASE_PATH}/${fileName}`;
+    });
+
+    // Instantiate a parser and call the correct method depending on which option was passed in.
+    const parser = new GiftParser(files);
+    const foundQuestions = options.id
+      ? parser.findQuestionById(options.id)
+      : parser.findQuestionByQuery(options.query);
+
+    // Show each question that was found by displaying the total match count and
+    // the title and body for each question.
+    const foundCount = foundQuestions.length.toString().bold;
+    console.log(
+      `Found ${foundQuestions.length === 0 ? foundCount.red : foundCount.green} ${foundQuestions.length !== 1 ? "questions" : "question"} matching your query.\n`,
     );
+    foundQuestions.forEach((question, index) => {
+      console.log("-----");
+      console.log(`${"TITLE".green}: ${question.title}`);
+      console.log(`${"BODY".green}: ${question.body}`);
+      console.log("-----");
+
+      console.log("");
+    });
   })
 
   // SPEC_5
