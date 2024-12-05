@@ -202,7 +202,7 @@ class GiftParser {
       );
     }
 
-    // Validate each answer against the student answer that was given. Put the 
+    // Validate each answer against the student answer that was given. Put the
     // boolean results in an array and return it.
     const validatedAnswers = [];
     answers.forEach((answer, index) => {
@@ -238,17 +238,63 @@ class GiftParser {
         return answer === studentAnswer;
       }
 
+      // Here we must check that every word->word pair is equal to the pairs extracted
+      // from the question.
       case "Matching": {
-        // TODO: implement matching parsing.
-        return null;
+        const pairRegex = /=([^=~]+->[^=~]+)/g;
+        const correctPairsRaw = [...answer.matchAll(pairRegex)].map(
+          (m) => m[1],
+        );
+
+        // Extract and trim the correct answers into an array.
+        const correctPairs = correctPairsRaw.map((pair) => {
+          const [left, right] = pair.split("->").map((x) => x.trim());
+          return `${left}->${right}`;
+        });
+
+        // The student response was given separated by ':', so we split to get an array.
+        const studentPairsRaw = studentAnswer.split(":");
+
+        // Extract and trim into an array the student answers as well.
+        const studentPairs = studentPairsRaw.map((pair) => {
+          const [left, right] = pair.split("->").map((x) => x.trim());
+          return `${left}->${right}`;
+        });
+
+        // Check for both arrays to be the same length.
+        if (studentPairs.length !== correctPairs.length) return false;
+
+        // Convert both arrays to sets and check for equality.
+        const correctSet = new Set(correctPairs);
+        for (const sp of studentPairs) {
+          if (!correctSet.has(sp)) return false;
+        }
+
+        return true;
       }
 
+      // Extract the number range to validate, parse the student answer into a float and compare.
       case "Numerical": {
-        //TODO: implement numerical parsing.
-        return null;
+        const numericalRegex = /#([0-9]+(\.[0-9]+)?)(?::([0-9]+(\.[0-9]+)?))?/;
+        const matches = numericalRegex.exec(answer);
+
+        if (!matches) return null;
+
+        const correctValue = parseFloat(matches[1]);
+        const tolerance = matches[3] ? parseFloat(matches[3]) : 0;
+
+        const studentVal = parseFloat(studentAnswer);
+
+        // Check if the student answer is a valid number.
+        if (isNaN(studentVal)) return false;
+
+        return (
+          studentVal >= correctValue - tolerance &&
+          studentVal <= correctValue + tolerance
+        );
       }
 
-      // Failed to extract an answer so validity is unknown.
+      // Unlikely: the type provided is not amongst the list, so no automatic validation
       default: {
         return null;
       }
@@ -317,5 +363,5 @@ class GiftParser {
     throw new Error("Unable to extract the correct answer from question.");
   }
 }
-  
+
 module.exports = GiftParser;
