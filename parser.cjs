@@ -80,6 +80,49 @@ class GiftParser {
     return outputQuestions;
   }
 
+  findQuestionsTypes(giftFileContent) {
+     // Tokenize the exam file into a list of GIFT questions
+    const questions = this._tokenizeIntoQuestions(giftFileContent);
+
+    // Regex patterns for each question type
+    const patterns = {
+      "True/False": /\{[TF]\}/,
+      "Multiple Choice": /\{.*(~|=).*}/,
+      "Matching": /\{.*->.*}/,
+      "Numerical": /\{#.*\}/,
+      "Short Answer": /\{.*(___||SA).*\}/,
+      "Essay": /\{\}/,
+    };
+
+    // Initialyze count of every type of question
+    const typesCount = {
+      "Multiple Choice": 0,
+      "True/False": 0,
+      "Matching": 0,
+      "Short Answer": 0,
+      "Numerical": 0,
+      "Essay": 0,
+      "Unknown": 0,
+    };
+    
+    // For each question, check its type using regex
+    questions.forEach((question) => {
+      let matched = false;
+      for (const [type, regex] of Object.entries(patterns)) {
+        if (regex.test(question)) {
+          typesCount[type]++;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        typesCount["Unknown"]++;
+      }
+    });
+  
+    return typesCount;
+  }
+
   _tokenizeIntoQuestions(file) {
     // Transform the raw GIFT file into an array of GIFT questions.
     // Remove comments in the process.

@@ -158,10 +158,34 @@ program
     "View the profile for a GIFT exam that's in the database.\n",
   )
   .argument("<id>", "The ID associated with the exam")
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: View the profile for a GIFT exam that's in the database.",
-    );
+  .action(({ args }) => {
+    const examId = args.id;
+  
+    // Path to the exam file provided
+    const examFilePath = `${process.cwd()}/${examId}`;
+    
+    // Error handling for non-existant file
+    if (!fs.existsSync(examFilePath)) {
+      console.log(`Error: The exam file '${examId}' does not exist.`);
+      return;
+    }
+
+    // Read the content of the exam file
+    const examContent = fs.readFileSync(examFilePath, "utf-8");
+  
+    // Instantiate a parser and call the correct method
+    const parser = new GiftParser([]);
+    const typesProfile = parser.findQuestionsTypes(examContent);
+  
+    // Display the results
+    console.log("-----");
+    console.log(`Profile for Exam ID: ${examId}\n`);
+    Object.entries(typesProfile).forEach(([type, count]) => {
+      console.log(`${type}: ${count} question(s)`);
+    });
+    console.log("-----");
+
+    console.log("");
   })
 
   // SPEC_6
