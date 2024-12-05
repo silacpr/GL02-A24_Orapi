@@ -158,12 +158,12 @@ program
     "View the profile for a GIFT exam that's in the database.\n",
   )
   .argument("<id>", "The ID associated with the exam")
-  .action(({ args }) => {
+  .action(({ args, options }) => {
     const examId = args.id;
-  
+
     // Path to the exam file provided
-    const examFilePath = `${process.cwd()}/${examId}`;
-    
+    const examFilePath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${examId}`;
+
     // Error handling for non-existant file
     if (!fs.existsSync(examFilePath)) {
       console.log(`Error: The exam file '${examId}' does not exist.`);
@@ -172,20 +172,20 @@ program
 
     // Read the content of the exam file
     const examContent = fs.readFileSync(examFilePath, "utf-8");
-  
+
     // Instantiate a parser and call the correct method
     const parser = new GiftParser([]);
     const typesProfile = parser.findQuestionsTypes(examContent);
-  
-    // Display the results
-    console.log("-----");
-    console.log(`Profile for Exam ID: ${examId}\n`);
-    Object.entries(typesProfile).forEach(([type, count]) => {
-      console.log(`${type}: ${count} question(s)`);
-    });
-    console.log("-----");
 
-    console.log("");
+    // Display the results
+    console.log(`${"Profile for Exam ID".green}: ${examId}\n`);
+    Object.entries(typesProfile).forEach(([type, count]) => {
+      const formattedCount = count.toString().bold;
+      console.log(
+        `${type}: ${count === 0 ? formattedCount.red : formattedCount.green} ${count === 1 ? "question" : "questions"}`,
+      );
+    });
+    console.log();
   })
 
   // SPEC_6

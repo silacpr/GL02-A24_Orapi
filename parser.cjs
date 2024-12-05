@@ -19,7 +19,7 @@ class GiftParser {
 
       // Append the rawQuestion to the outputString, with 3 new line characters
       // to help readability. (any number of new lines can be between questions)
-      giftOutput += rawQuestion.trim() + '\n\n\n';
+      giftOutput += rawQuestion.trim() + "\n\n\n";
     });
 
     return giftOutput;
@@ -33,10 +33,11 @@ class GiftParser {
       // Read the contents of the file
       const file = fs.readFileSync(filePath, "utf-8");
 
-      // Remove the comments. We don't tokenize because we can directly look for the
+      // Remove the comments and the categories. We don't tokenize because we can directly look for the
       // specific question id we want, and we need only 1 result because id's are
       // supposed to be unique.
-      const withoutComments = this._removeComments(file);
+      const withoutCategories = this._removeCategories(file);
+      const withoutComments = this._removeComments(withoutCategories);
 
       // Escape any potential special characters that could mess up the regex match.
       const escapedId = this._escapeSpecialRegexChars(id);
@@ -81,52 +82,50 @@ class GiftParser {
   }
 
   findQuestionsTypes(giftFileContent) {
-     // Tokenize the exam file into a list of GIFT questions
+    // Tokenize the exam file into a list of GIFT questions
     const questions = this._tokenizeIntoQuestions(giftFileContent);
 
     // Regex patterns for each question type
     const patterns = {
-      "True/False": /\{[TF]\}/,
-      "Multiple Choice": /\{.*(~|=).*}/,
-      "Matching": /\{.*->.*}/,
-      "Numerical": /\{#.*\}/,
-      "Short Answer": /\{.*(___||SA).*\}/,
-      "Essay": /\{\}/,
+      "True/False": /\{[TF]\}/s,
+      "Multiple Choice": /\{(?!.*->).*([~=]).*}/s,
+      Matching: /\{.*->.*}/s,
+      Numerical: /\{#.*\}/s,
+      "Short Answer": /\{.*(___||SA).*\}/s,
+      Essay: /\{\}/s,
     };
 
     // Initialyze count of every type of question
     const typesCount = {
+      Description: 0,
       "Multiple Choice": 0,
       "True/False": 0,
-      "Matching": 0,
+      Matching: 0,
       "Short Answer": 0,
-      "Numerical": 0,
-      "Essay": 0,
-      "Unknown": 0,
+      Numerical: 0,
+      Essay: 0,
     };
-    
+
     // For each question, check its type using regex
     questions.forEach((question) => {
-      let matched = false;
       for (const [type, regex] of Object.entries(patterns)) {
         if (regex.test(question)) {
           typesCount[type]++;
-          matched = true;
-          break;
+          return;
         }
       }
-      if (!matched) {
-        typesCount["Unknown"]++;
-      }
+      console.log(question);
+      typesCount["Description"]++;
     });
-  
+
     return typesCount;
   }
 
   _tokenizeIntoQuestions(file) {
     // Transform the raw GIFT file into an array of GIFT questions.
-    // Remove comments in the process.
-    const withoutComments = this._removeComments(file);
+    // Remove comments and categories in the process.
+    const withoutCategories = this._removeCategories(file);
+    const withoutComments = this._removeComments(withoutCategories);
     const questions = withoutComments
       .split(/(?=^::)/m)
       .map((question) => question.trim())
@@ -140,6 +139,14 @@ class GiftParser {
     return file
       .split("\n")
       .filter((line) => !line.trim().startsWith("//"))
+      .join("\n");
+  }
+
+  _removeCategories(file) {
+    // Remove all categories (line starting with '$CATEGORY:')
+    return file
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("$CATEGORY:"))
       .join("\n");
   }
 
