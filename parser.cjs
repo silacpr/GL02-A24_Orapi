@@ -114,7 +114,6 @@ class GiftParser {
           return;
         }
       }
-      console.log(question);
       typesCount["Description"]++;
     });
 

@@ -193,21 +193,13 @@ program
   // SPEC_6
   .command(
     "visualize",
-    "Generate a graph of the different question types in the database or for a specific exam.\n"
+    "Generate a graph of the different question types in the database or for a specific exam.\n",
   )
-  .option(
-    "--all",
-    "Generate the graph for all exams in the database."
-  )
-  .option(
-    "--id <id>",  
-    "Generate the gragh for a specific exam given its ID."
-  )
-  .option(
-    "--output <output>", 
-    "Path to save the SVG file.", 
-    { default: "./output_graph.svg", }
-  )
+  .option("--all", "Generate the graph for all exams in the database.")
+  .option("--id <id>", "Generate the gragh for a specific exam given its ID.")
+  .option("--output <output>", "Path to save the SVG file.", {
+    default: "./output_graph.svg",
+  })
   .action(async ({ options }) => {
     const { id, all, output } = options;
 
@@ -221,7 +213,9 @@ program
     let examContent = "";
     if (all) {
       const files = readDataDir(options.dataDirPath);
-      examContent = files.map((file) => fs.readFileSync(file, "utf-8")).join("\n");
+      examContent = files
+        .map((file) => fs.readFileSync(file, "utf-8"))
+        .join("\n");
     } else {
       const examPath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${id}`;
       if (!fs.existsSync(examPath)) {
@@ -257,13 +251,13 @@ program
     const vegaSpec = vegalite.compile(vegaLiteSpec).spec;
 
     // SVG render
-    const view = new vg.View(vg.parse(vegaSpec)).renderer('svg').run();
-    const mySvg = view.toSVG();
-    mySvg.then(function(res){
-      fs.writeFileSync(output, res)
+    const view = new vg.View(vg.parse(vegaSpec)).renderer("svg").run();
+    const svgString = view.toSVG();
+    svgString.then(function (res) {
+      fs.writeFileSync(output, res);
       view.finalize();
       console.log("%s", JSON.stringify(vegaSpec, null, 2));
-      console.log(`Chart output : ${output}`);
+      console.log(`Sucessfully wrote chart '${output}' to disk.`);
     });
   })
 
@@ -276,10 +270,7 @@ program
     "<id>",
     "The ID associated with the exam that is going to be compared to the question database",
   )
-  .option(
-    "--all",
-    "Compare the specified file to the entire database.",
-  )
+  .option("--all", "Compare the specified file to the entire database.")
   .option(
     "--reference-id <reference-id>",
     "Compare the specified file to another specific file with its associated ID",
@@ -295,11 +286,11 @@ program
       console.log(`Error: The exam file '${examId}' does not exist.`);
       return;
     }
-    
+
     // Read the content of the exam file
     const mainFileContent = fs.readFileSync(mainFilePath, "utf-8");
 
-    // Determine reference files to compare against : all fiiles for optiion all and one specified file for option referenceId
+    // Determine reference files to compare against : all files for optiion all and one specified file for option referenceId
     let referenceFiles = [];
     if (options.all) {
       referenceFiles = readDataDir(options.dataDirPath);
@@ -337,14 +328,16 @@ program
       }
       return acc;
     }, {});
-    
+
     // Calculate average amount of each type for better comparison
     const fileCount = referenceFiles.length;
     const averageReferenceTypes = Object.entries(referenceTypes).reduce(
       (acc, [type, total]) => {
         acc[type] = total / fileCount;
         return acc;
-      }, {});
+      },
+      {},
+    );
 
     // Find common types
     const commonTypes = Object.keys(mainFileTypes).filter(
@@ -352,20 +345,19 @@ program
     );
 
     // Display results
-    console.log("\n-----");
-    console.log(`Comparison of '${examId}' with reference:`);
+    console.log(
+      `Comparison of '${examId.bold.green}' with database reference (${options.all ? "all" : options.referenceId}):`,
+    );
     console.log("Common question types:");
     commonTypes.forEach((type) => {
       console.log(
-        `- ${type}: ${mainFileTypes[type]} (main) vs ${averageReferenceTypes[type]} (reference)`,
+        `- ${type.green}: ${mainFileTypes[type].toString().bold.yellow} (main) vs ${averageReferenceTypes[type].toFixed(2).toString().bold.yellow} (reference)`,
       );
     });
 
     if (commonTypes.length === 0) {
       console.log("No common question types found.");
     }
-
-    console.log("-----\n");
   })
 
   // SPEC_8
