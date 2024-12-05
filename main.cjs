@@ -149,12 +149,11 @@ program
       console.log(`${"TITLE".green}: ${question.title}`);
       console.log(`${"BODY".green}: ${question.body}`);
       console.log("-----");
-
-      console.log("");
+      console.log();
     });
   })
 
-  // SPEC_5
+  // SPEC_5 + SPEC_7
   .command(
     "profile",
     "View the profile for a GIFT exam that's in the database.\n",
@@ -176,15 +175,18 @@ program
     const examContent = fs.readFileSync(examFilePath, "utf-8");
 
     // Instantiate a parser and call the correct method
-    const parser = new GiftParser([]);
+    const files = readDataDir(options.dataDirPath);
+    const parser = new GiftParser(files);
     const typesProfile = parser.findQuestionsTypes(examContent);
+    const typesAverage = parser.computeQuestionTypeAverages();
 
     // Display the results
     console.log(`${"Profile for Exam ID".green}: ${examId}\n`);
     Object.entries(typesProfile).forEach(([type, count]) => {
       const formattedCount = count.toString().bold;
+      const formattedAverage = typesAverage[type].toFixed(2).toString().bold.yellow;
       console.log(
-        `${type}: ${count === 0 ? formattedCount.red : formattedCount.green} ${count === 1 ? "question" : "questions"}`,
+        `${type}: ${count === 0 ? formattedCount.red : formattedCount.green} ${count === 1 ? "question" : "questions"} (average: ${formattedAverage})`,
       );
     });
     console.log();

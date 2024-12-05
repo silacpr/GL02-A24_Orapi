@@ -1,3 +1,4 @@
+const { count } = require("console");
 const fs = require("fs");
 
 class GiftParser {
@@ -23,6 +24,38 @@ class GiftParser {
     });
 
     return giftOutput;
+  }
+
+  computeQuestionTypeAverages() {
+    let examCount = 0;
+    const typesAverage = {
+      Description: 0,
+      "Multiple Choice": 0,
+      "True/False": 0,
+      Matching: 0,
+      "Short Answer": 0,
+      Numerical: 0,
+      Essay: 0,
+    };
+
+    // Loop through all the filePaths that were given as input.
+    this.inputFiles.forEach((filePath) => {
+      const file = fs.readFileSync(filePath, "utf-8");
+
+      // Remove the comments and the categories.
+      const withoutCategories = this._removeCategories(file);
+      const withoutComments = this._removeComments(withoutCategories);
+
+      const typesCount = this.findQuestionsTypes(withoutComments);
+
+      examCount++;
+      for (let key in typesCount) {
+        typesAverage[key] =
+          (typesAverage[key] * (examCount - 1) + typesCount[key]) / examCount;
+      }
+    });
+
+    return typesAverage;
   }
 
   findQuestionById(id, raw = false) {
@@ -86,12 +119,14 @@ class GiftParser {
     const questions = this._tokenizeIntoQuestions(giftFileContent);
 
     // Regex patterns for each question type
+    // Note: the order in which the regex are checked is very important. Do not
+    // change the order of properties unless you know what you're doing.
     const patterns = {
       "True/False": /\{[TF]\}/s,
+      Numerical: /\{#.*\}/s,
+      "Short Answer": /\{[^~]*=+[^~]*\}/s,
       "Multiple Choice": /\{(?!.*->).*([~=]).*}/s,
       Matching: /\{.*->.*}/s,
-      Numerical: /\{#.*\}/s,
-      "Short Answer": /\{.*(___||SA).*\}/s,
       Essay: /\{\}/s,
     };
 
@@ -100,9 +135,9 @@ class GiftParser {
       Description: 0,
       "Multiple Choice": 0,
       "True/False": 0,
+      Numerical: 0,
       Matching: 0,
       "Short Answer": 0,
-      Numerical: 0,
       Essay: 0,
     };
 
