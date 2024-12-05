@@ -317,5 +317,5 @@ class GiftParser {
     throw new Error("Unable to extract the correct answer from question.");
   }
 }
-
+  
 module.exports = GiftParser;
