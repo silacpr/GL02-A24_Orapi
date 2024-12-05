@@ -5,6 +5,7 @@ const vg = require("vega");
 const vegalite = require("vega-lite");
 
 const GiftParser = require("./parser.cjs");
+const VCard = require("./vcard.cjs");
 
 const DATA_DIR_BASE_PATH = `${__dirname}/data`;
 const MIN_EXAM_QUESTION_COUNT = 15;
@@ -184,7 +185,8 @@ program
     console.log(`${"Profile for Exam ID".green}: ${examId}\n`);
     Object.entries(typesProfile).forEach(([type, count]) => {
       const formattedCount = count.toString().bold;
-      const formattedAverage = typesAverage[type].toFixed(2).toString().bold.yellow;
+      const formattedAverage = typesAverage[type].toFixed(2).toString()
+        .bold.yellow;
       console.log(
         `${type}: ${count === 0 ? formattedCount.red : formattedCount.green} ${count === 1 ? "question" : "questions"} (average: ${formattedAverage})`,
       );
@@ -371,29 +373,107 @@ program
     "<id>",
     "The ID associated with the test answers that need to be validated.",
   )
-  .argument(
-    "<answers>",
-    "Comma separated list of test answers to validate. The list's length MUST be equal to the questions length.",
+  .option(
+    "--answers <answers>",
+    "Comma separated list of test answers to validate. The list's length MUST be equal to the questions length. Answers must be written as they would be in the GIFT file. This means 'T' or 'F' for true false questions and 'left->right' for matching questions. Answers that contain multiple elements such as matching questions must be separated by ':' (Ex: 'left1->right1:left2->right2'.",
   )
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: Evaluate the validity of the answers for a given test. A valid ID as well as the corresponding list of answers must be provided.",
+  .action(({ args, options }) => {
+    const { id } = args;
+    const { answers } = options;
+
+    // Path to the test file
+    const testFilePath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${id}`;
+
+    // Validate if the test file exists
+    if (!fs.existsSync(testFilePath)) {
+      console.log(`Error: The test file '${id}' does not exist.`);
+      return;
+    }
+
+    // Read the test content
+    const testContent = fs.readFileSync(testFilePath, "utf-8");
+
+    // Convert the comma-separated answers to an array
+    const studentAnswers = answers.split(",");
+
+    // Instantiate the parser
+    const files = readDataDir(options.dataDirPath);
+    const parser = new GiftParser(files);
+
+    const validatedAnswers = parser.validateAnswers(
+      testContent,
+      studentAnswers,
     );
+
+    console.log(`Test result for the exam ${id.bold.green}:`);
+    validatedAnswers.forEach((validatedAnswer, index) => {
+      let formattedResult;
+      switch (validatedAnswer) {
+        case true:
+          formattedResult = "correct".bold.green;
+          break;
+        case false:
+          formattedResult = "incorrect".bold.red;
+          break;
+        case null:
+          formattedResult = "not validated".bold.grey;
+          break;
+      }
+
+      console.log(`- Answer #${index + 1}: ${formattedResult}`);
+    });
   })
 
   // SPEC_9
   .command(
     "contact",
-    "Generate a contact and identification file for a given teacher using the VCard format.\n",
+    "Generate a contact and identification file for a given teacher using the VCard format (version 4.).\n",
   )
-  .argument(
-    "<id>",
-    "The ID associated with the teacher for which we want to generate the identification card.",
+  .option(
+    "--name <name>",
+    "The formatted name for the vCard. Example value: 'John Doe'",
+    { required: true },
   )
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: Generate a contact and identification file for a given teacher using the VCard format.",
-    );
+  .option(
+    "--email <email>",
+    "The email for the vCard. Example value: 'john.doe@gmail.com'",
+  )
+  .option(
+    "--tel <tel>",
+    "The telephone number for the vCard. Example value: '+33783126463",
+    { validator: program.STRING },
+  )
+  .option(
+    "--output-path <path>",
+    "The path to write the output to. Defaults to ./output.vcard if not specified.",
+    { default: "output.vcard" },
+  )
+  .action(({ options }) => {
+    // Check if we at least have a name defined.
+    if (!options.name) {
+      console.log(
+        "Error: you must provide at least a name for the vCard generation to occur.",
+      );
+      return;
+    }
+
+    // Instantiate a vCard object and generate the vCard string.
+    const vCard = new VCard(options.name, options.email, options.tel);
+    const vCardString = vCard.generateVCardString();
+
+    // Attempt to write the vCardString result to disk.
+    fs.writeFile(options.outputPath, vCardString, (err) => {
+      if (err) {
+        console.log(
+          `Error: failed to write the file '${options.outputPath}' to disk.`,
+        );
+        return;
+      }
+
+      console.log(
+        `Successfully wrote the file '${options.outputPath}' to disk.`,
+      );
+    });
   });
 
 program.run();

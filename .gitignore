@@ -8,5 +8,8 @@ node_modules/
 # Default generated gift files.
 output.gift
 
+# Default generated vCard files.
+output.vcard
+
 # Default generated svg files.
 output_graph.svg

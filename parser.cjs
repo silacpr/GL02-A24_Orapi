@@ -1,4 +1,3 @@
-const { count } = require("console");
 const fs = require("fs");
 
 class GiftParser {
@@ -118,18 +117,6 @@ class GiftParser {
     // Tokenize the exam file into a list of GIFT questions
     const questions = this._tokenizeIntoQuestions(giftFileContent);
 
-    // Regex patterns for each question type
-    // Note: the order in which the regex are checked is very important. Do not
-    // change the order of properties unless you know what you're doing.
-    const patterns = {
-      "True/False": /\{[TF]\}/s,
-      Numerical: /\{#.*\}/s,
-      "Short Answer": /\{[^~]*=+[^~]*\}/s,
-      "Multiple Choice": /\{(?!.*->).*([~=]).*}/s,
-      Matching: /\{.*->.*}/s,
-      Essay: /\{\}/s,
-    };
-
     // Initialyze count of every type of question
     const typesCount = {
       Description: 0,
@@ -141,18 +128,131 @@ class GiftParser {
       Essay: 0,
     };
 
-    // For each question, check its type using regex
+    // For each question, check its type
     questions.forEach((question) => {
-      for (const [type, regex] of Object.entries(patterns)) {
-        if (regex.test(question)) {
-          typesCount[type]++;
-          return;
-        }
-      }
-      typesCount["Description"]++;
+      const type = this._findQuestionType(question);
+      typesCount[type]++;
     });
 
     return typesCount;
+  }
+
+  _findQuestionType(rawQuestion) {
+    // Regex patterns for each question type
+    // Note: the order in which the regex are checked is very important. Do not
+    // change the order of properties unless you know what you're doing.
+    const patterns = {
+      "True/False": /\{[TF]\}/s,
+      Numerical: /\{#.*\}/s,
+      Matching: /\{.*->.*}/s,
+      "Short Answer": /\{[^~]*=+[^~]*\}/s,
+      "Multiple Choice": /\{(?!.*->).*([~=]).*}/s,
+      Essay: /\{\}/s,
+    };
+
+    for (const [type, regex] of Object.entries(patterns)) {
+      if (regex.test(rawQuestion)) {
+        return type;
+      }
+    }
+    return "Description";
+  }
+
+  validateAnswers(testContent, studentAnswers) {
+    // Tokenize the GIFT file content into individual questions
+    const rawQuestions = this._tokenizeIntoQuestions(testContent);
+
+    // Assign a type to each question and store it in an object.
+    const questions = rawQuestions.map((question) => {
+      const type = this._findQuestionType(question);
+      return { type, text: question };
+    });
+
+    // Filter out the Essay and description questions because they cannot be validated.
+    const questionsToValidate = questions.filter((question) => {
+      const type = this._findQuestionType(question.text);
+      return type !== "Essay" && type !== "Description";
+    });
+
+    // Check that there as many answers as there are questions to validate.
+    if (questionsToValidate.length !== studentAnswers.length) {
+      throw new Error(
+        `The number of answers (${studentAnswers.length}) does not match the number of questions (${questionsToValidate.length}).`,
+      );
+    }
+
+    // Extract every answer from each question, put them all in one array, with
+    // the type included so that we know how to extract the correct answer later on.
+    const answerRegex = /\{([^{}]*)\}/gs;
+    const answers = [];
+    questionsToValidate.forEach((question) => {
+      const matches = [...question.text.matchAll(answerRegex)].map(
+        (match) => match[1],
+      );
+      if (matches)
+        answers.push(
+          ...matches.map((match) => ({ type: question.type, text: match })),
+        );
+    });
+
+    // Check that there as many answers as there are answers to validate.
+    if (answers.length !== studentAnswers.length) {
+      throw new Error(
+        `The number of answers (${studentAnswers.length}) does not match the number of questions (${answers.length}).`,
+      );
+    }
+
+    // Validate each answer against the student answer that was given. Put the 
+    // boolean results in an array and return it.
+    const validatedAnswers = [];
+    answers.forEach((answer, index) => {
+      validatedAnswers.push(
+        this._validateAnswer(answer.type, answer.text, studentAnswers[index]),
+      );
+    });
+
+    return validatedAnswers;
+  }
+
+  _validateAnswer(type, answer, studentAnswer) {
+    switch (type) {
+      // Check if the user provided the same answer as the correct answer.
+      case "Multiple Choice": {
+        const multiChoiceRegex = /(?<==)[^~]+/;
+        return multiChoiceRegex.exec(answer)[0].trim() === studentAnswer;
+      }
+
+      // Extract all variations of the correct answer and check if the student answer
+      // is amongst those.
+      case "Short Answer": {
+        const shortAnswerRegex = /(?<==)[^=]+/gs;
+        const matches = [...answer.matchAll(shortAnswerRegex)].map((match) =>
+          match[0].trim(),
+        );
+        return matches.includes(studentAnswer);
+      }
+
+      // Here we know it's one letter and the user has to provide the same letter,
+      // so we can directly compare for equality. No more parsing to do for this step.
+      case "True/False": {
+        return answer === studentAnswer;
+      }
+
+      case "Matching": {
+        // TODO: implement matching parsing.
+        return null;
+      }
+
+      case "Numerical": {
+        //TODO: implement numerical parsing.
+        return null;
+      }
+
+      // Failed to extract an answer so validity is unknown.
+      default: {
+        return null;
+      }
+    }
   }
 
   _tokenizeIntoQuestions(file) {
@@ -194,6 +294,27 @@ class GiftParser {
 
   _escapeSpecialRegexChars(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  // Extract the correct answer for a question
+  _extractCorrectAnswer(question) {
+    // Regex patterns for answer types
+    const patterns = {
+      "True/False": /{(T|F)}/,
+      Numerical: /{#(.*?)}/,
+      "Short Answer": /{=(.*?)}/,
+      "Multiple Choice": /{~?=.*?(=.*?)}/,
+      Matching: /{(.*?)}/, // ça ne va pas fonctionner du premier coup ce truc je le sens
+    };
+
+    for (const [type, regex] of Object.entries(patterns)) {
+      const match = regex.exec(question);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+
+    throw new Error("Unable to extract the correct answer from question.");
   }
 }
 
