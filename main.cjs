@@ -1,6 +1,8 @@
 const { program } = require("@caporal/core");
 const fs = require("fs");
 require("colors");
+const vg = require("vega");
+const vegalite = require("vega-lite");
 
 const GiftParser = require("./parser.cjs");
 
@@ -191,12 +193,78 @@ program
   // SPEC_6
   .command(
     "visualize",
-    "Generate a graph of the different question types in the database.\n",
+    "Generate a graph of the different question types in the database or for a specific exam.\n"
   )
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: Generate a graph of the different question types in the database.",
-    );
+  .option(
+    "--all",
+    "Generate the graph for all exams in the database."
+  )
+  .option(
+    "--id <id>",  
+    "Generate the gragh for a specific exam given its ID."
+  )
+  .option(
+    "--output <output>", 
+    "Path to save the SVG file.", 
+    { default: "./output_graph.svg", }
+  )
+  .action(async ({ options }) => {
+    const { id, all, output } = options;
+
+    // Check that the user provided a valid option
+    if (!id && !all) {
+      console.log("Error: Provide an exam ID or use the --all option.");
+      return;
+    }
+
+    // Read the data from a all exams or a specific one
+    let examContent = "";
+    if (all) {
+      const files = readDataDir(options.dataDirPath);
+      examContent = files.map((file) => fs.readFileSync(file, "utf-8")).join("\n");
+    } else {
+      const examPath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${id}`;
+      if (!fs.existsSync(examPath)) {
+        console.log(`Error: The exam file '${id}' does not exist.`);
+        return;
+      }
+      examContent = fs.readFileSync(examPath, "utf-8");
+    }
+
+    // Instantiate a parser and call the correct method
+    const parser = new GiftParser([]);
+    const typesProfile = parser.findQuestionsTypes(examContent);
+
+    // Create the VegaLite specification
+    const vegaLiteSpec = {
+      data: {
+        values: Object.entries(typesProfile).map(([type, count]) => ({
+          type,
+          count,
+        })),
+      },
+      mark: "bar",
+      encoding: {
+        x: { field: "type", type: "ordinal", title: "Question Types" },
+        y: { field: "count", type: "quantitative", title: "Count" },
+        color: { field: "type", type: "nominal", legend: null },
+      },
+      width: 600,
+      height: 400,
+    };
+
+    // Compile the VegaLite spec into a Vega spec
+    const vegaSpec = vegalite.compile(vegaLiteSpec).spec;
+
+    // SVG render
+    const view = new vg.View(vg.parse(vegaSpec)).renderer('svg').run();
+    const mySvg = view.toSVG();
+    mySvg.then(function(res){
+      fs.writeFileSync(output, res)
+      view.finalize();
+      console.log("%s", JSON.stringify(vegaSpec, null, 2));
+      console.log(`Chart output : ${output}`);
+    });
   })
 
   // SPEC_7
@@ -206,12 +274,98 @@ program
   )
   .argument(
     "<id>",
-    "The ID associated with the exam that going to be compared to the question database",
+    "The ID associated with the exam that is going to be compared to the question database",
   )
-  .action(({ logger }) => {
-    logger.info(
-      "TODO: Compare an exam profile to find how many questions types are found both in the exam and in the question database.",
+  .option(
+    "--all",
+    "Compare the specified file to the entire database.",
+  )
+  .option(
+    "--reference-id <reference-id>",
+    "Compare the specified file to another specific file with its associated ID",
+  )
+  .action(({ args, options }) => {
+    const examId = args.id;
+
+    // Path to the exam file provided
+    const mainFilePath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${examId}`;
+
+    // Error handling for non-existant file
+    if (!fs.existsSync(mainFilePath)) {
+      console.log(`Error: The exam file '${examId}' does not exist.`);
+      return;
+    }
+    
+    // Read the content of the exam file
+    const mainFileContent = fs.readFileSync(mainFilePath, "utf-8");
+
+    // Determine reference files to compare against : all fiiles for optiion all and one specified file for option referenceId
+    let referenceFiles = [];
+    if (options.all) {
+      referenceFiles = readDataDir(options.dataDirPath);
+    } else if (options.referenceId) {
+      const referenceFilePath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${options.referenceId}`;
+
+      // Error handling for non-existant file
+      if (!fs.existsSync(referenceFilePath)) {
+        console.log(
+          `Error: The reference file '${options.referenceId}' does not exist.`,
+        );
+        return;
+      }
+
+      referenceFiles = [referenceFilePath];
+    } else {
+      // Check that the user provided a valid option
+      console.log(
+        "Error: You must specify either --all or --reference-id as a reference.",
+      );
+      return;
+    }
+
+    // Instantiate a parser and call the correct method
+    const parser = new GiftParser(referenceFiles);
+    const mainFileTypes = parser.findQuestionsTypes(mainFileContent);
+
+    const referenceTypes = referenceFiles.reduce((acc, filePath) => {
+      const fileContent = fs.readFileSync(filePath, "utf-8");
+      const types = parser.findQuestionsTypes(fileContent);
+
+      // Merge counts of types from all reference files
+      for (const [type, count] of Object.entries(types)) {
+        acc[type] = (acc[type] || 0) + count;
+      }
+      return acc;
+    }, {});
+    
+    // Calculate average amount of each type for better comparison
+    const fileCount = referenceFiles.length;
+    const averageReferenceTypes = Object.entries(referenceTypes).reduce(
+      (acc, [type, total]) => {
+        acc[type] = total / fileCount;
+        return acc;
+      }, {});
+
+    // Find common types
+    const commonTypes = Object.keys(mainFileTypes).filter(
+      (type) => mainFileTypes[type] > 0 && averageReferenceTypes[type] > 0,
     );
+
+    // Display results
+    console.log("\n-----");
+    console.log(`Comparison of '${examId}' with reference:`);
+    console.log("Common question types:");
+    commonTypes.forEach((type) => {
+      console.log(
+        `- ${type}: ${mainFileTypes[type]} (main) vs ${averageReferenceTypes[type]} (reference)`,
+      );
+    });
+
+    if (commonTypes.length === 0) {
+      console.log("No common question types found.");
+    }
+
+    console.log("-----\n");
   })
 
   // SPEC_8

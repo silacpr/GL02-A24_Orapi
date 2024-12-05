@@ -7,3 +7,4 @@ node_modules/
 
 # Default generated gift files.
 output.gift
+output_graph.svg
