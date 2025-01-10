@@ -457,6 +457,25 @@ program
       return;
     }
 
+
+     /// Validate email format if provided.
+    if (options.email && !/^\S+@\S+\.\S+$/.test(options.email)) {
+      console.log("Error: The provided email is not in a valid format.");
+      return;
+    }
+
+  // Validate telephone format if provided (digits and spaces allowed, optionally starting with '+').
+  if (options.tel && !/^\+?[0-9 ]+$/.test(options.tel)) {
+    console.log(
+      "Error: The provided telephone number must contain only digits, spaces, and optionally start with a '+'.",
+    );
+    return;
+  }
+
+
+
+
+
     // Instantiate a vCard object and generate the vCard string.
     const vCard = new VCard(options.name, options.email, options.tel);
     const vCardString = vCard.generateVCardString();
