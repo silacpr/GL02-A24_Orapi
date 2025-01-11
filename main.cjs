@@ -474,6 +474,40 @@ program
         `Successfully wrote the file '${options.outputPath}' to disk.`,
       );
     });
+  })
+  
+  .command(
+    "verify",
+    "Verify the conformity of a test. It must includes between 15 and 20 questions without duplicates.\n", 
+  )
+  .argument(
+    "<file>",
+    "The file we want to test",
+  )
+  .action(({ args }) => {
+    
+    const file = fs.readFileSync(args.file, 'utf-8');
+    
+    const ids = file.match(/::(.*?)::/g)?.map(match => match.slice(2, -2)) || [];
+
+    const idCounts = ids.reduce((acc, id) => {
+        acc[id] = (acc[id] || 0) + 1;
+        return acc;
+    }, {});
+
+    const doublons = Object.entries(idCounts).filter(([id, count]) => count > 1);
+
+    console.log(`Nombre total d'ID trouvés : ${ids.length}`);
+    console.log(`Nombre d'ID uniques : ${Object.keys(idCounts).length}`);
+
+    if (doublons.length > 0) {
+        console.log('ID en double trouvés :');
+        doublons.forEach(([id, count]) => {
+            console.log(`- ${id} apparaît ${count} fois`);
+        });
+    } else {
+        console.log('Aucun doublon trouvé.');
+    }
   });
 
 program.run();
