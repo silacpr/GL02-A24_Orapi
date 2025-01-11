@@ -50,7 +50,7 @@ program
   .action(({ options }) => {
     // Check that the user provided a list of questionIds.
     if (!options.questionIds) {
-      console.log("Error: You must provide a list of question ids.");
+      console.log("Error: You must provide a list of question ids.".red);
       return;
     }
 
@@ -64,7 +64,7 @@ program
       questionIds.length > MAX_EXAM_QUESTION_COUNT
     ) {
       console.log(
-        `Error: You must provide between ${MIN_EXAM_QUESTION_COUNT} and ${MAX_EXAM_QUESTION_COUNT} questions ids, but you provided ${questionIds.length.toString().bold.red}.`,
+        `Error: You must provide between ${MIN_EXAM_QUESTION_COUNT} and ${MAX_EXAM_QUESTION_COUNT} questions ids, but you provided ${questionIds.length.toString().bold.red}.`.red,
       );
     }
 
@@ -79,7 +79,7 @@ program
 
       // Unlikely: something unexpected happened and the output is an emtpy string.
       if (!giftOutput) {
-        console.log("Error: failed to generate the GIFT output file.");
+        console.log("Error: failed to generate the GIFT output file.".red);
         return;
       }
 
@@ -88,18 +88,18 @@ program
       fs.writeFile(options.outputPath, giftOutput, (err) => {
         if (err) {
           console.log(
-            `Error: Failed to write the file ${options.outputPath} to disk. Details: ${err}`,
+            `Error: Failed to write the file ${options.outputPath} to disk. Details: ${err}`.red,
           );
           return;
         }
 
         console.log(
-          `Successfully generated the GIFT file ${options.outputPath}.`,
+          `Successfully generated the GIFT file ${options.outputPath}.`.green,
         );
       });
     } catch (questionId) {
       console.log(
-        `Error: the question id '${questionId}' has not been found in the database. Are you sure the question exists ?`,
+        `Error: the question id '${questionId}' has not been found in the database. Are you sure the question exists ?`.red,
       );
     }
   })
@@ -120,14 +120,14 @@ program
   .action(({ options }) => {
     // Check that the user provided a valid option
     if (!options.id && !options.query) {
-      console.log("Error: You must provide either an id or a query.");
+      console.log("Error: You must provide either an id or a query.".red);
       return;
     }
 
     // Check that the user did not provide both the id and and a query.
     if (options.id && options.query) {
       console.log(
-        "Error: You should provide either an id or a query but not both.",
+        "Error: You should provide either an id or a query but not both.".red,
       );
       return;
     }
@@ -168,7 +168,7 @@ program
 
     // Error handling for non-existant file
     if (!fs.existsSync(examFilePath)) {
-      console.log(`Error: The exam file '${examId}' does not exist.`);
+      console.log(`Error: The exam file '${examId}' does not exist.`.red);
       return;
     }
 
@@ -209,7 +209,7 @@ program
 
     // Check that the user provided a valid option
     if (!id && !all) {
-      console.log("Error: Provide an exam ID or use the --all option.");
+      console.log("Error: Provide an exam ID or use the --all option.".red);
       return;
     }
 
@@ -223,7 +223,7 @@ program
     } else {
       const examPath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${id}`;
       if (!fs.existsSync(examPath)) {
-        console.log(`Error: The exam file '${id}' does not exist.`);
+        console.log(`Error: The exam file '${id}' does not exist.`.red);
         return;
       }
       examContent = fs.readFileSync(examPath, "utf-8");
@@ -261,7 +261,7 @@ program
       fs.writeFileSync(output, res);
       view.finalize();
       console.log("%s", JSON.stringify(vegaSpec, null, 2));
-      console.log(`Sucessfully wrote chart '${output}' to disk.`);
+      console.log(`Sucessfully wrote chart '${output}' to disk.`.green);
     });
   })
 
@@ -287,7 +287,7 @@ program
 
     // Error handling for non-existant file
     if (!fs.existsSync(mainFilePath)) {
-      console.log(`Error: The exam file '${examId}' does not exist.`);
+      console.log(`Error: The exam file '${examId}' does not exist.`.red);
       return;
     }
 
@@ -304,7 +304,7 @@ program
       // Error handling for non-existant file
       if (!fs.existsSync(referenceFilePath)) {
         console.log(
-          `Error: The reference file '${options.referenceId}' does not exist.`,
+          `Error: The reference file '${options.referenceId}' does not exist.`.red,
         );
         return;
       }
@@ -313,7 +313,7 @@ program
     } else {
       // Check that the user provided a valid option
       console.log(
-        "Error: You must specify either --all or --reference-id as a reference.",
+        "Error: You must specify either --all or --reference-id as a reference.".red,
       );
       return;
     }
@@ -360,7 +360,7 @@ program
     });
 
     if (commonTypes.length === 0) {
-      console.log("No common question types found.");
+      console.log("No common question types found.".yellow);
     }
   })
 
@@ -386,7 +386,7 @@ program
 
     // Validate if the test file exists
     if (!fs.existsSync(testFilePath)) {
-      console.log(`Error: The test file '${id}' does not exist.`);
+      console.log(`Error: The test file '${id}' does not exist.`.red);
       return;
     }
 
@@ -452,29 +452,25 @@ program
     // Check if we at least have a name defined.
     if (!options.name) {
       console.log(
-        "Error: you must provide at least a name for the vCard generation to occur.",
+        "Error: you must provide at least a name for the vCard generation to occur.".red,
       );
       return;
     }
 
 
-     /// Validate email format if provided.
+    // Validate email format if provided.
     if (options.email && !/^\S+@\S+\.\S+$/.test(options.email)) {
-      console.log("Error: The provided email is not in a valid format.");
+      console.log("Error: The provided email is not in a valid format.".red);
       return;
     }
 
-  // Validate telephone format if provided (digits and spaces allowed, optionally starting with '+').
-  if (options.tel && !/^\+?[0-9 ]+$/.test(options.tel)) {
-    console.log(
-      "Error: The provided telephone number must contain only digits, spaces, and optionally start with a '+'.",
-    );
-    return;
-  }
-
-
-
-
+    // Validate telephone format if provided (digits and spaces allowed, optionally starting with '+').
+    if (options.tel && !/^\+?[0-9 ]+$/.test(options.tel)) {
+      console.log(
+        "Error: The provided telephone number must contain only digits, spaces, and optionally start with a '+'.".red,
+      );
+      return;
+    }
 
     // Instantiate a vCard object and generate the vCard string.
     const vCard = new VCard(options.name, options.email, options.tel);
@@ -484,13 +480,13 @@ program
     fs.writeFile(options.outputPath, vCardString, (err) => {
       if (err) {
         console.log(
-          `Error: failed to write the file '${options.outputPath}' to disk.`,
+          `Error: failed to write the file '${options.outputPath}' to disk.`.red,
         );
         return;
       }
 
       console.log(
-        `Successfully wrote the file '${options.outputPath}' to disk.`,
+        `Successfully wrote the file '${options.outputPath}' to disk.`.green,
       );
     });
   });
