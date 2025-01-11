@@ -12,11 +12,9 @@ Pour installer et utiliser le programme, suivez les étapes ci-dessous :
 
 1. Clonez le dépôt du projet ou téléchargez-le localement.
 
-2. Installez les dépendances nécessaires avec la commande suivante :
-`npm install`
+2. Installez les dépendances nécessaires avec la commande suivante : ` npm install `
 
-3. Une fois l’installation terminée, exécutez le programme avec :
-`node ./main.cjs`
+3. Une fois l’installation terminée, exécutez le programme avec : ` node ./main.cjs [command] `
 
 Pour une description complète des commandes et leur fonctionnement, veuillez consulter le guide utilisateur.
 
