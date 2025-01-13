@@ -365,7 +365,8 @@ program
   })
 
   // SPEC_8
-  .command(
+  // SPEC_8
+  /*.command(
     "evaluate",
     "Evaluate the validity of the answers for a given test. A valid ID as well as the corresponding list of answers must be provided.\n",
   )
@@ -422,7 +423,92 @@ program
 
       console.log(`- Answer #${index + 1}: ${formattedResult}`);
     });
-  })
+  })*/
+
+    .command(
+      "evaluate",
+      "Evaluate the validity of the answers for a given test interactively. A valid ID must be provided to load the test questions."
+    )
+    .argument("<id>", "The ID associated with the test to evaluate answers.")
+    .action(({ args, options }) => {
+      const { id } = args;
+    
+      // Path to the test file
+      const testFilePath = `${options.dataDirPath ?? DATA_DIR_BASE_PATH}/${id}`;
+    
+      // Validate if the test file exists
+      if (!fs.existsSync(testFilePath)) {
+        console.log(`Error: The test file '${id}' does not exist.`);
+        return;
+      }
+    
+      // Read the test content
+      const testContent = fs.readFileSync(testFilePath, "utf-8");
+    
+      // Instantiate the parser
+      const files = readDataDir(options.dataDirPath);
+      const parser = new GiftParser(files);
+    
+      // Parse questions
+      const questions = parser.parseQuestions(testContent);
+      if (!questions.length) {
+        console.log("Error: No questions found in the test file.");
+        return;
+      }
+    
+      // Start interactive question-and-answer loop
+      const readline = require("readline");
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+    
+      let currentQuestionIndex = 0;
+    
+      const askQuestionsSequentially = () => {
+        if (currentQuestionIndex < questions.length) {
+          const question = questions[currentQuestionIndex];
+    
+          // Affiche la question actuelle
+          console.log(`\nQuestion #${currentQuestionIndex + 1}:`);
+          console.log(`${question.text}\n`);
+    
+          // Demande la réponse de l'utilisateur
+          rl.question("Votre réponse : ", (userAnswer) => {
+            // Conversion et validation
+            const answer = String(userAnswer || "").trim();
+            const correctAnswer = question.correctAnswer || "N/A"; // Default if no correctAnswer is set
+            const isCorrect = answer === correctAnswer;
+    
+            // Affiche si la réponse est correcte ou incorrecte
+            console.log(
+              `- Votre réponse est ${
+                isCorrect ? "correcte".bold.green : "incorrecte".bold.red
+              }.\n`
+            );
+    
+            // Passe à la question suivante
+            currentQuestionIndex++;
+            askQuestionsSequentially(); // Récursivité pour la prochaine question
+          });
+        } else {
+          // Fin des questions
+          console.log("\nTest terminé ! Voici le résumé :\n");
+          questions.forEach((question, index) => {
+            console.log(
+              `- Question #${index + 1}: ${question.text}\n  Réponse correcte : ${
+                question.correctAnswer || "N/A"
+              }\n`
+            );
+          });
+    
+          rl.close(); // Ferme l'interface readline
+        }
+      };
+    
+      // Début du mode question
+      askQuestionsSequentially();
+    })  
 
   // SPEC_9
   .command(
