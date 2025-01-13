@@ -5,6 +5,28 @@ class GiftParser {
     this.inputFiles = inputFiles;
   }
 
+  // Get questions from the test file
+  parseQuestions(giftContent) {
+    const questionPattern = /::.*?::\s*(.*?)\s*\{(.*?)\}/g;
+    const questions = [];
+    let match;
+  
+    while ((match = questionPattern.exec(giftContent)) !== null) {
+      questions.push({
+        text: match[1].trim(), // Texte de la question
+        correctAnswer: match[2].trim().replace(/=/g, ""), // Réponse correcte
+      });
+    }
+  
+    return questions;
+  }
+  
+  
+  // Validate the answer for a specified question
+  validateAnswer(userAnswer, correctAnswer) {
+    return userAnswer === correctAnswer;
+  }
+  
   generateGift(questionIds) {
     let giftOutput = "";
 
